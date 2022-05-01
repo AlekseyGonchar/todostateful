@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  api:
+    build: '.'
+    ports:
+      - '8000:8000'
+    command: gunicorn -w 1 -k uvicorn.workers.UvicornWorker applications.rest.main:app -b 0.0.0.0:8000 --disable-redirect-access-to-syslog
+
+  cron:
+    build: '.'
+    command: arq applications.cron.main.CronSetting
+
+  database:
+    image: postgres

@@ -1,0 +1,39 @@
+@startuml domainModel
+
+hide empty members
+hide circle
+
+class User {
+  uid: UUID
+  + createTaskList(name: str): TaskList
+}
+
+class TaskList {
+  uid: UUID
+  name: str
+  + addTask(task: Task)
+  + deleteTask(task: Task)
+  + getArchivedTasks(): List[Task]
+  + getCurrentTasks(): List[Task]
+}
+
+class Task {
+  name: str
+  description: Optional[str]
+}
+
+abstract class DueTime {
+  + isDue(current: datetime): bool
+}
+
+class ConcreteDueTime
+class RepeatDueTime
+
+DueTime <|-- ConcreteDueTime
+DueTime <|-- RepeatDueTime
+
+User o-- TaskList
+TaskList o-- Task
+Task -- DueTime
+
+@enduml

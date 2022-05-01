@@ -1,0 +1,31 @@
+# docker-compose file for development:
+version: '3.8'
+
+services:
+  api:
+    build: '.'
+    ports:
+      - '8000:8000'
+    depends_on:
+      - mongo
+    env_file:
+      - local.env
+
+  mongo:
+    image: mongo
+    restart: always
+    env_file:
+      - local.env
+    volumes:
+      - mongodata:/data/db
+
+  mongo-express:
+    image: mongo-express
+    restart: always
+    ports:
+      - 8081:8081
+    env_file:
+      - local.env
+
+volumes:
+  mongodata:

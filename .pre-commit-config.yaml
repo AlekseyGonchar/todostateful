@@ -1,0 +1,19 @@
+fail_fast: true
+
+repos:
+  - repo: local
+    hooks:
+      - id: lint
+        name: lint
+        description: Enforce passing lint before commit
+        entry: task linter
+        language: system
+        always_run: true
+        pass_filenames: false
+      - id: test
+        name: test
+        description: Enforce tests passing before commit
+        entry: task test
+        language: system
+        always_run: true
+        pass_filenames: false

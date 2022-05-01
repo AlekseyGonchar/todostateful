@@ -1,0 +1,31 @@
+# Alternative docker-compose file for development using image build with buildx:
+version: '3.8'
+
+services:
+  api:
+    image: todostateful:latest
+    ports:
+      - '8000:8000'
+    depends_on:
+      - mongo
+    env_file:
+      - local.env
+
+  mongo:
+    image: mongo
+    restart: always
+    env_file:
+      - local.env
+    volumes:
+      - mongodata:/data/db
+
+  mongo-express:
+    image: mongo-express
+    restart: always
+    ports:
+      - 8081:8081
+    env_file:
+      - local.env
+
+volumes:
+  mongodata:

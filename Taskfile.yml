@@ -1,0 +1,67 @@
+version: "3"
+
+dotenv: ["{{.ENV}}/.env.", ".env"]
+
+vars:
+  GIT_COMMIT:
+    sh: git log --pretty=format:'%H' -n 1
+  GIT_BRANCH:
+    sh: git branch --show-current
+  CURRENT_TIME:
+    sh: date --rfc-3339=ns
+  CURRENT_VERSION:
+    sh: poetry version | awk 'END {print $NF}'
+  FULL_REVISION:
+    sh: echo "{{.CURRENT_VERSION}}"-"{{.GIT_BRANCH}}"
+
+env:
+  ENV: local
+
+tasks:
+  init:
+    desc: Initialize the project for development
+    cmds:
+      - poetry install
+      - poetry run pre-commit install
+      - cmd: poetry run mypy . --install-types --non-interactive
+        ignore_error: true
+        silent: true
+
+  linter:
+    desc: Lint codebase
+    cmds:
+      - poetry run mypy . --install-types --non-interactive
+      - poetry check
+      - poetry run safety check --full-report
+
+  test:
+    desc: Run all tests via pytest
+    cmds:
+      - poetry run pytest -vv -x tests
+
+  build:docker:
+    desc: Build docker image via buildx for your platform
+    cmds:
+      - docker buildx build .
+        --tag todostateful:latest
+        --tag todostateful:"{{.FULL_REVISION}}"
+        --build-arg REVISION="{{.GIT_COMMIT}}"
+        --build-arg CREATED="{{.CURRENT_TIME}}"
+        --build-arg VERSION="{{.FULL_REVISION}}"
+        --platform {{.PLATFORM}}
+        --load
+
+  run:compose-override:
+    desc: Run build docker image
+    cmds:
+      - docker-compose -f docker-compose.override.yml
+
+  run:compose:
+    desc: Run build docker image
+    cmds:
+      - docker-compose up
+
+  run:
+    desc: Run uvicorn server locally
+    cmds:
+      - poetry run uvicorn todostateful.main:app --host {{.HOST| default "0.0.0.0"}} --port {{.PORT | default "8000"}} --reload

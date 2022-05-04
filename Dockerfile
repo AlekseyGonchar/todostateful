@@ -1,149 +1,107 @@
-# ARG APP_NAME=todostateful
-# ARG PYTHON_VERSION=3.10
-# ARG POETRY_VERSION=1.1.13
+ARG PYTHON_VERSION=3.10
 
-# # Use latest slim-buster as the fastest official python image with latest patches
-# FROM python:$PYTHON_VERSION-slim-buster as base
+FROM python:${PYTHON_VERSION}-slim-buster as python-base
 
-# LABEL maintainer=""
-# LABEL org.opencontainers.image.source=""
-
-# ENV \
-#   # python:
-#   PYTHONDONTWRITEBYTECODE=1 \
-#   PYTHONUNBUFFERED=1 \
-#   PYTHONFAULTHANDLER=1 \
-#   PYTHONHASHSEED=random \
-#   # pip:
-#   PIP_NO_CACHE_DIR=off \
-#   PIP_DISABLE_PIP_VERSION_CHECK=on \
-#   PIP_DEFAULT_TIMEOUT=100 \
-#   # poetry:
-#   POETRY_VERSION=$POETRY_VERSION \
-#   POETRY_VIRTUALENVS_CREATE=false \
-#   POETRY_NO_INTERACTION=1
-
-# RUN apt-get update && apt-get upgrade -y \
-#   && apt-get install --no-install-recommends -y \
-#     bash \
-#     build-essential \
-#     curl \
-#     gettext \
-#     git \
-#     libpq-dev \
-#     && curl -sSL https://install.python-poetry.org | python -
-
-# # Install Poetry - respects $POETRY_VERSION & $POETRY_HOME
-# RUN curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/install-poetry.py | python
-# ENV PATH="$POETRY_HOME/bin:$PATH"
-
-# SHELL ["/bin/bash", "-eo", "pipefail", "-c"]
-
-# RUN apt-get update && apt-get upgrade -y \
-#   && apt-get install --no-install-recommends -y \
-#     bash \
-#     build-essential \
-#     curl \
-#     gettext \
-#     git \
-#     libpq-dev \
-#   # Installing `poetry` package manager:
-#   # https://github.com/python-poetry/poetry
-#   && curl -sSL 'https://install.python-poetry.org' | python - \
-#   && poetry --version \
-#   # Cleaning cache:
-#   && apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false \
-#   && apt-get clean -y && rm -rf /var/lib/apt/lists/*
-
-# # # Create dir for source code files
-# # RUN mkdir /app
-# # WORKDIR /app
-
-# # # Install poetry
-# # RUN pip install poetry
-
-# # # Copy in the poetry config files
-# # COPY pyproject.toml poetry.lock ./
-
-# # # Install only production dependencies
-# # RUN poetry install --no-root --no-dev
-
-# # # Copy in everything else and install:
-# # COPY . .
-# # RUN poetry install --no-dev
-
-
-# Set initial build args:
-ARG APP_NAME="todostateful"
-ARG PYTHON_VERSION="3.10"
-ARG POETRY_VERSION="1.1.13"
-ARG BRANCH=${BRANCH:-unknown}
-ARG COMMIT=${COMMIT:-unknown}
-ARG BUILD_TIME=${BUILD_TIME:-unknown}
-
-# Base python image stage:
-FROM python:${PYTHON_VERSION}-slim-buster as base
+ARG APP_NAME=todostateful
+ARG REVISION=unknown
+ARG CREATED=unknown
+ARG VERSION=unknown
+ARG POETRY_VERSION=1.1.13
+ARG PYTHON_VERSION
 
 # Add image labels:
-LABEL BRANCH=$BRANCH
-LABEL COMMIT=$COMMIT
-LABEL BUILD_TIME=$BUILD_TIME
-LABEL MAINTAINER="tumberum@gmail.com"
-LABEL org.opencontainers.image.source="https://github.com/AlekseyGonchar/todostateful"
+LABEL org.opencontainers.image.title="${APP_NAME}"
+LABEL org.opencontainers.image.revision="${REVISION}"
+LABEL org.opencontainers.image.created="${CREATED}"
+LABEL org.opencontainers.image.version="${VERSION}"
+LABEL org.opencontainers.image.authors="tumberum@gmail.com"
+LABEL org.opencontainers.image.url="https://github.com/AlekseyGonchar/todostateful"
+LABEL org.opencontainers.image.licenses="MIT"
+LABEL org.opencontainers.image.base.name=python:${PYTHON_VERSION}-slim-buster
 
 # Set environment variables:
 # Current version metadata:
-ENV COMMIT_SHA=${COMMIT}
-ENV COMMIT_BRANCH=${BRANCH}
-ENV COMMIT_BUILD_TIME=${BUILD_TIME}
-# python:
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
-ENV PYTHONFAULTHANDLER=1
-ENV PYTHONHASHSEED="random"
-# pip:
-ENV PIP_NO_CACHE_DIR="off"
-ENV PIP_DISABLE_PIP_VERSION_CHECK="on"
-ENV PIP_DEFAULT_TIMEOUT=100
-# poetry:
-ENV POETRY_VERSION=$POETRY_VERSION
-ENV POETRY_VIRTUALENVS_CREATE=false
-ENV POETRY_NO_INTERACTION=1
+ENV \
+  APP_NAME="${APP_NAME}" \
+  # python:
+  PYTHONDONTWRITEBYTECODE=1 \
+  PYTHONUNBUFFERED=1 \
+  PYTHONFAULTHANDLER=1 \
+  PYTHONHASHSEED="random" \
+  # pip:
+  PIP_NO_CACHE_DIR=1 \
+  PIP_DISABLE_PIP_VERSION_CHECK=1 \
+  PIP_DEFAULT_TIMEOUT=100 \
+  # poetry:
+  POETRY_VERSION="${POETRY_VERSION}" \
+  POETRY_VIRTUALENVS_IN_PROJECT=true \
+  POETRY_NO_INTERACTION=1 \
+  POETRY_CACHE_DIR='/var/cache/pypoetry' \
+  POETRY_HOME='/usr/local'
+
+FROM python-base as builder-base
+
+# Reason: https://docs.docker.com/develop/develop-images/dockerfile_best-practices/#using-pipes
+SHELL ["/bin/bash", "-eo", "pipefail", "-c"]
 
 # Build app as one docker layer command:
+# hadolint ignore=DL3008
 RUN \
-  # Install patches && curl with build-essential and locales:
+  # Install patches && curl with build-essential:
   apt-get update \
   && apt-get upgrade -y \
-  && apt-get install --no-install-recommends -y curl build-essential locales \
+  && apt-get install --no-install-recommends -y curl build-essential \
   # Installing poetry package manager:
   && curl -sSL 'https://install.python-poetry.org' | python - \
   && poetry --version \
   # Clean cache:
   && rm -rf /var/lib/apt/lists/*
 
+WORKDIR "${APP_NAME}"
+
+COPY ./poetry.lock ./pyproject.toml ./
+
 RUN \
-  # Install deps:
+  # Install deps, no root package so docker layer caching works:
   poetry run pip install -U pip \
-  && poetry install --no-dev --no-ansi \
-  # Cleaning poetry installation's cache for production:
-  && rm -rf "$POETRY_CACHE_DIR"
+  && poetry install --no-dev --no-ansi --no-interaction --no-root \
+  && rm -rf "${POETRY_CACHE_DIR}"
 
-COPY poetry.lock pyproject.toml
+FROM python-base as application
 
-# Entrypoint script
-COPY ./docker/docker-entrypoint.sh /docker-entrypoint.sh
-RUN chmod +x /docker-entrypoint.sh
-ENTRYPOINT ["/docker-entrypoint.sh"]
-CMD ["gunicorn", "--bind :$PORT", "--workers 1", "--threads 1", "--timeout 0", "\"$APP_NAME:create_app()\""]
+COPY --from=builder-base $POETRY_HOME $POETRY_HOME
+COPY --from=builder-base $APP_NAME $APP_NAME
 
-# Create user
-RUN groupadd -g 1500 app_user && \
-    useradd -m -u 1500 -g app_user app_user
+# Create app user:
+RUN \
+  groupadd -r app_user \
+  && useradd -d /"${APP_NAME}" -r -g app_user app_user \
+  && chown app_user:app_user -R /"${APP_NAME}"
 
-COPY --chown=app_user:app_user ./app /app
+WORKDIR /"${APP_NAME}"
+
+COPY --chown=app_user:app_user ./"${APP_NAME}" ./"${APP_NAME}"
+
+# install again using cache results in instaling root package only
+RUN poetry install --no-dev --no-ansi --no-interaction
+
 USER app_user
-WORKDIR /${APP_NAME}
 
-ENTRYPOINT /docker-entrypoint.sh $0 $@
-CMD [ "gunicorn", "--worker-class uvicorn.workers.UvicornWorker", "--config /gunicorn_conf.py", "main:app"]
+EXPOSE 8000
+
+HEALTHCHECK --interval=10s --timeout=5s --retries=5 CMD curl -f / http://localhost:8000/health || exit 1
+
+CMD [ \
+  "poetry", \
+  "run", \
+  "gunicorn", \
+  "-w", \
+  "1", \
+  "-k", \
+  "uvicorn.workers.UvicornWorker", \
+  "todostateful.rest_app:app", \
+  "-b", \
+  "0.0.0.0:8000", \
+  "--disable-redirect-access-to-syslog", \
+  "--forwarded-allow-ips=\"*\"" \
+]

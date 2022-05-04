@@ -2,7 +2,7 @@ from abc import ABC
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import NewType, Optional, Union
-from uuid import UUID
+from uuid import UUID, uuid4
 from enum import Enum
 
 EntityId = NewType('EntityId', UUID)
@@ -21,29 +21,31 @@ class DueTime(ABC):
     pass
 
 
-@dataclass(kw_only=True, slots=True, frozen=True)
 class RepeatableDueTime(DueTime):
     pass
 
 
-@dataclass(kw_only=True, slots=True, frozen=True)
 class ConcreteDueTime(DueTime):
     pass
 
 
-@dataclass(kw_only=True, slots=True)
-class Task:
+class Task(object):
     uid: EntityId
     name: Name
     description: Description | None
     due_time: ConcreteDueTime | RepeatableDueTime | None
 
+    def __init__(self) -> None:
+        pass
 
-@dataclass(kw_only=True, slots=True)
-class TaskList:
-    uid: EntityId
-    name: Name
-    tasks: list[Task]
+
+class TaskList(object):
+    max_tasks: int = 100
+
+    def __init__(self, name: Name) -> None:
+        self.uid = EntityId(uuid4())
+        self.name = name
+        self.tasks: list[Task] = []
 
     def create_task(
         self,
@@ -54,10 +56,9 @@ class TaskList:
         pass
 
 
-@dataclass(kw_only=True, slots=True)
-class User:
-    uid: EntityId
-    task_lists: list[TaskList]
+class User(object):
+    max_task_lists: int = 5
 
-    def create_task_list(self, task_list_name: Name) -> TaskList:
-        pass
+    def __init__(self) -> None:
+        self.uid = EntityId(uuid4())
+        self._task_lists: list[TaskList] = []

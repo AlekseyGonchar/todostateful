@@ -103,6 +103,8 @@ FROM python-base as production
 
 SHELL ["/bin/bash", "-e", "-o", "pipefail", "-c"]
 
+COPY --from=builder-base $APP_NAME $APP_NAME
+
 # Create app user to avoid executing application as root:
 RUN \
   groupadd -r app_user \
@@ -115,13 +117,15 @@ WORKDIR /"${APP_NAME}"
 COPY --chown=app_user:app_user ./"${APP_NAME}" ./"${APP_NAME}"
 
 # install again using cache results in instaling root package only
-RUN poetry install --no-dev --no-ansi --no-interaction
+# RUN poetry install --no-dev --no-ansi --no-interaction
 
 USER app_user
 
 EXPOSE 8000
 
 HEALTHCHECK --interval=10s --timeout=5s --retries=5 CMD curl -f / http://localhost:8000/health || exit 1
+
+ENTRYPOINT [".", "/opt/pysetup/.venv/bin/activate"]
 
 CMD ["uvicorn", "app.main:app", "--proxy-headers", "--host", "0.0.0.0", "--port", "8000"]
 
@@ -136,10 +140,13 @@ SHELL ["/bin/bash", "-e", "-o", "pipefail", "-c"]
 # COPY poetry and application dependencies installed in previos stage:
 COPY --from=development-builder-base $POETRY_HOME $POETRY_HOME
 COPY --from=development-builder-base $APP_NAME $APP_NAME
+COPY ./"${APP_NAME}" ./"${APP_NAME}"
 
 # install again using cache results in instaling root package only
 RUN poetry install --no-dev --no-ansi --no-interaction
 
 EXPOSE 8000
+
+ENTRYPOINT ["poetry", "run"]
 
 CMD ["uvicorn", "app.main:app", "--proxy-headers", "--reload", "--host", "0.0.0.0", "--port", "8000"]

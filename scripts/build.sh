@@ -1,4 +1,8 @@
-#!/bin/bash
+SHELL:=/usr/bin/env bash
+
+set -o errexit
+set -o nounset
+set -o pipefail
 
 script="./build.sh"
 
@@ -42,9 +46,6 @@ function get_current_version {
 # Main
 dockerfile="./Dockerfile"
 envfile="./local.env"
-run=false
-multiplatform=false
-registry="localhost:5000"
 
 # Args while-loop
 while [ "$1" != "" ]; do

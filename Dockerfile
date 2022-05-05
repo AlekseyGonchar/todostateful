@@ -1,9 +1,10 @@
-# Set python version before first FROM, so python version can be configured in docker:
+# Set python version before first FROM
+# so python version can be configured in docker:
 ARG PYTHON_VERSION=3.10
 
-# ===========
+# =============================================================================
 # Base stage:
-# ===========
+# =============================================================================
 FROM python:${PYTHON_VERSION}-slim-buster as python-base
 
 # Build args:
@@ -49,13 +50,11 @@ ENV \
   POETRY_HOME='/usr/local'
 
 
-# ===================================
+# =============================================================================
 # Runtime dependeicnes builder stage:
-# ===================================
+# =============================================================================
 FROM python-base as builder-base
-
-# Reason: https://docs.docker.com/develop/develop-images/dockerfile_best-practices/#using-pipes
-SHELL ["/bin/bash", "-e", "-o", "pipefail", "-c"]
+SHELL ["/bin/bash", "-eo", "pipefail", "-c"]
 
 # Build app as one docker layer command:
 # hadolint ignore=DL3008
@@ -83,24 +82,10 @@ RUN \
   && rm -rf "${POETRY_CACHE_DIR}"
 
 
-# =====================================
-# Development dependencies build stage:
-# =====================================
-FROM builder-base as development-builder-base
-
-SHELL ["/bin/bash", "-e", "-o", "pipefail", "-c"]
-
-RUN \
-  # Install development dependencies so they work inside container
-  poetry install --no-ansi --no-interaction --no-root \
-  && rm -rf "${POETRY_CACHE_DIR}"
-
-
-# =======================
+# =============================================================================
 # Production build stage:
-# =======================
+# =============================================================================
 FROM python-base as production
-
 SHELL ["/bin/bash", "-e", "-o", "pipefail", "-c"]
 
 COPY --from=builder-base $APP_NAME $APP_NAME
@@ -125,28 +110,46 @@ EXPOSE 8000
 
 HEALTHCHECK --interval=10s --timeout=5s --retries=5 CMD curl -f / http://localhost:8000/health || exit 1
 
-ENTRYPOINT [".", "/opt/pysetup/.venv/bin/activate"]
+ENTRYPOINT [".", "/${APP_NAME}/.venv/bin/activate"]
 
-CMD ["uvicorn", "app.main:app", "--proxy-headers", "--host", "0.0.0.0", "--port", "8000"]
+CMD [ \
+  "uvicorn", \
+  "app.main:app", \
+  "--proxy-headers", \
+  "--host", \
+  "0.0.0.0", \
+  "--port", \
+  "8000"\
+]
 
 
-# ========================
+# =============================================================================
 # Development build stage:
-# ========================
+# =============================================================================
 FROM python-base as development
-
 SHELL ["/bin/bash", "-e", "-o", "pipefail", "-c"]
 
 # COPY poetry and application dependencies installed in previos stage:
-COPY --from=development-builder-base $POETRY_HOME $POETRY_HOME
-COPY --from=development-builder-base $APP_NAME $APP_NAME
-COPY ./"${APP_NAME}" ./"${APP_NAME}"
+COPY --from=builder-base $POETRY_HOME $POETRY_HOME
+COPY --from=builder-base $APP_NAME /$APP_NAME
+COPY ./poetry.lock ./pyproject.toml /$APP_NAME
 
-# install again using cache results in instaling root package only
-RUN poetry install --no-dev --no-ansi --no-interaction
+RUN \
+  # Install development dependencies so they work inside container
+  poetry install --no-ansi --no-interaction \
+  && rm -rf "${POETRY_CACHE_DIR}"
 
 EXPOSE 8000
 
 ENTRYPOINT ["poetry", "run"]
 
-CMD ["uvicorn", "app.main:app", "--proxy-headers", "--reload", "--host", "0.0.0.0", "--port", "8000"]
+CMD [ \
+  "uvicorn", \
+  "app.main:app", \
+  "--proxy-headers", \
+  "--reload", \
+  "--host", \
+  "0.0.0.0", \
+  "--port", \
+  "8000"\
+]

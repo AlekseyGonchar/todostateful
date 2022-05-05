@@ -1,4 +1,4 @@
-SHELL:=/usr/bin/env bash
+#!/usr/bin/env bash
 
 set -o errexit
 set -o nounset
@@ -31,6 +31,10 @@ function help {
 
 function get_commit_hash {
   git log --pretty=format:'%H' -n 1
+}
+
+function get_branch_name {
+  git branch --show-current
 }
 
 function get_current_datetime {

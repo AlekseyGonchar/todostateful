@@ -5,11 +5,17 @@ services:
     build: '.'
     ports:
       - '8000:8000'
-    command: gunicorn -w 1 -k uvicorn.workers.UvicornWorker applications.rest.main:app -b 0.0.0.0:8000 --disable-redirect-access-to-syslog
+    depends_on:
+      - db
 
-  cron:
-    build: '.'
-    command: arq applications.cron.main.CronSetting
+  db:
+    image: postgres:14
+    environment:
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_volume:/var/lib/postgresql
 
-  database:
-    image: postgres
+volumes:
+  db_volume:

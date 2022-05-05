@@ -12,6 +12,8 @@ orjson = "^3.6.8"
 email-validator = "^1.2.0"
 uvicorn = {extras = ["standart"], version = "^0.17.6"}
 sentry-sdk = "^1.5.10"
+SQLAlchemy = {extras = ["asyncio"], version = "^1.4.36"}
+asyncpg = "^0.25.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^7.1.2"

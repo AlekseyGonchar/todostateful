@@ -1,19 +1,17 @@
-# Set python version before first FROM
-# so python version can be configured as ARG:
+# Python version can be configured as ARG, mind '-' at the beggining:
 ARG PYTHON_VERSION=3.10
 
 # =============================================================================
 # Base stage:
-# Configures python environment, metadata and labels
 # =============================================================================
-FROM python:${PYTHON_VERSION}-slim-buster as python-base
+FROM python:${PYTHON_VERSION}-slim-bullseye as python-base
+SHELL ["/bin/bash", "-e", "-o", "pipefail", "-c"]
 
 # Build args:
 ARG APP_NAME=todostateful
 ARG POETRY_VERSION=1.1.13
 ARG PYTHON_VERSION
-ARG DEBIAN_FRONTEND=noninteractive
-# Container metadata:
+# Container metadata args:
 ARG REVISION
 ARG CREATED
 ARG VERSION
@@ -23,7 +21,7 @@ ARG LICENSES="MIT"
 
 # Add image labels
 # https://github.com/opencontainers/image-spec/blob/main/annotations.md:
-LABEL org.opencontainers.image.title="${APP_NAME}"
+LABEL org.opencontainers.image.title=todostateful
 LABEL org.opencontainers.image.revision="${REVISION}"
 LABEL org.opencontainers.image.created="${CREATED}"
 LABEL org.opencontainers.image.version="${VERSION}"
@@ -31,11 +29,11 @@ LABEL org.opencontainers.image.authors="${AUTHORS}"
 LABEL org.opencontainers.image.source="${SOURCE}"
 LABEL org.opencontainers.image.url="${URL}"
 LABEL org.opencontainers.image.licenses="${LICENSES}"
-LABEL org.opencontainers.image.base.name=python:${PYTHON_VERSION}-slim-buster
+LABEL org.opencontainers.image.base.name=python:${PYTHON_VERSION}-slim-bullseye
 
 # Set environment variables:
 # package:
-ENV APP_NAME="${APP_NAME}"
+ENV APP_NAME="todostateful"
 # python:
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
@@ -51,16 +49,12 @@ ENV POETRY_VIRTUALENVS_IN_PROJECT=true
 ENV POETRY_NO_INTERACTION=1
 ENV POETRY_CACHE_DIR='/var/cache/pypoetry'
 ENV POETRY_HOME='/usr/local'
-
+ENV LOG_LEVEL=debug
 
 # =============================================================================
 # Runtime builder stage:
-# Upgrades system dependencies and installs poetry
 # =============================================================================
 FROM python-base as builder-base
-
-ARG DEBIAN_FRONTEND=noninteractive
-
 SHELL ["/bin/bash", "-eo", "pipefail", "-c"]
 
 # Build app as one docker layer command:
@@ -69,14 +63,14 @@ RUN \
   # Install patches && curl with build-essential:
   apt-get update \
   && apt-get upgrade -y \
-  && apt-get install --no-install-recommends -y curl build-essential \
+  && apt-get install --no-install-recommends -y curl \
   # Installing poetry package manager:
   && curl -sSL 'https://install.python-poetry.org' | python - \
   && poetry --version \
   # Clean apt cache to reduce size:
   && rm -rf /var/lib/apt/lists/*
 
-WORKDIR "${APP_NAME}"
+WORKDIR /todostateful
 
 # Copy only lock and toml to install dependencies without code:
 COPY ./poetry.lock ./pyproject.toml ./
@@ -90,29 +84,32 @@ RUN \
 
 
 # =============================================================================
-# Production build stage:
-# Installs runtime-only dependencies and runs CMD using venv
+# App build stage:
 # =============================================================================
 FROM python-base as production
-
 SHELL ["/bin/bash", "-e", "-o", "pipefail", "-c"]
 
-COPY --from=builder-base ${APP_NAME} ${APP_NAME}
+# COPY poetry and runtime deps:
+COPY --from=builder-base /"${POETRY_HOME}" /"${POETRY_HOME}"
+COPY --from=builder-base /todostateful /todostateful
+
+WORKDIR /todostateful
 
 # Create app user to avoid executing application as root:
 RUN \
   groupadd -r app_user \
-  && useradd -d /"${APP_NAME}" -r -g app_user app_user \
-  && chown app_user:app_user -R /"${APP_NAME}"
+  && useradd -d /todostateful -r -g app_user app_user \
+  && chown app_user:app_user -R .
 
-WORKDIR /"${APP_NAME}"
+# COPY application code:
+COPY --chown=app_user:app_user ./todostateful ./todostateful
 
-# COPY application code near venv
-COPY --chown=app_user:app_user ./"${APP_NAME}" ./"${APP_NAME}"
+RUN \
+  # Install root package via poetry:
+  poetry install --no-dev --no-ansi --no-interaction \
+  && rm -rf "${POETRY_CACHE_DIR}"
 
 USER app_user
-
-EXPOSE 8000
 
 HEALTHCHECK \
   --interval=5m \
@@ -120,50 +117,19 @@ HEALTHCHECK \
   --retries=5 \
 CMD curl -f / http://localhost:8000/health || exit 1
 
-# ENTRYPOINT ["source", "/${APP_NAME}/.venv/bin/activate"]
-
-# CMD [ \
-#   "uvicorn", \
-#   "app.main:app", \
-#   "--proxy-headers", \
-#   "--host", \
-#   "0.0.0.0", \
-#   "--port", \
-#   "8000"\
-# ]
-
-
-# =============================================================================
-# Development build stage:
-# Installs all dependencies and root application
-# =============================================================================
-FROM python-base as development
-
-SHELL ["/bin/bash", "-e", "-o", "pipefail", "-c"]
-
-WORKDIR ${APP_NAME}
-
-# COPY poetry and application dependencies installed in previos stage:
-COPY --from=builder-base ${POETRY_HOME} ${POETRY_HOME}
-COPY --from=builder-base ${APP_NAME} .
-COPY ./"${APP_NAME}" ./"${APP_NAME}"
-
-RUN \
-  # Install development dependencies and root package:
-  poetry install --no-ansi --no-interaction \
-  && rm -rf "${POETRY_CACHE_DIR}"
-
 EXPOSE 8000
 
 ENTRYPOINT ["poetry", "run"]
 
 CMD [ \
   "uvicorn", \
-  "app.main:app", \
-  "--proxy-headers", \
+  "todostateful.rest_api:app", \
   "--reload", \
   "--host", \
   "0.0.0.0", \
   "--port", \
-  "8000"\
+  "8000" \
 ]
+
+# TODO: Add separate development stage
+# TODO: without poetry and optionally with gunicorn

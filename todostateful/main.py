@@ -5,6 +5,7 @@ import orjson
 import sentry_sdk
 import uvicorn
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sentry_sdk.integrations.logging import ignore_logger
@@ -51,6 +52,11 @@ def init_sentry() -> None:
 
 
 app = FastAPI(default_response_class=ORJSONResponse)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins='*',
+    allow_methods='*',
+)
 
 
 @app.get('/health')

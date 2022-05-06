@@ -1,16 +1,14 @@
 SHELL:=/usr/bin/env bash
+.SHELLFLAGS := -e -u -o pipefail -c
 
-.PHONY: lint
-lint:
-	poetry run mypy . --install-types --non-interactive
-	poetry run flake8 .
-	poetry check
-	poetry run safety check --full-report
+.PHONY: init
+init:
+	./scripts/init.sh
+
+.PHONY: linter
+linter`:
+	./scripts/linter.sh
 
 .PHONY: test
 test:
-	poetry run pytest -vv -x tests
-
-.PHONY: format
-format:
-	poetry run isort .
+	./scripts/test.sh

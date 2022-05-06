@@ -26,7 +26,7 @@ LABEL org.opencontainers.image.revision="${REVISION}"
 LABEL org.opencontainers.image.created="${CREATED}"
 LABEL org.opencontainers.image.version="${VERSION}"
 LABEL org.opencontainers.image.authors="${AUTHORS}"
-LABEL org.opencontainers.image.source="${SOURCE}"
+LABEL org.opencontainers.image.version="${VERSION}"
 LABEL org.opencontainers.image.url="${URL}"
 LABEL org.opencontainers.image.licenses="${LICENSES}"
 LABEL org.opencontainers.image.base.name=python:${PYTHON_VERSION}-slim-bullseye
@@ -86,7 +86,7 @@ RUN \
 # =============================================================================
 # App build stage:
 # =============================================================================
-FROM python-base as production
+FROM python-base as app-base
 SHELL ["/bin/bash", "-e", "-o", "pipefail", "-c"]
 
 # COPY poetry and runtime deps:
@@ -123,7 +123,7 @@ ENTRYPOINT ["poetry", "run"]
 
 CMD [ \
   "uvicorn", \
-  "todostateful.rest_api:app", \
+  "todostateful.main:app", \
   "--reload", \
   "--host", \
   "0.0.0.0", \

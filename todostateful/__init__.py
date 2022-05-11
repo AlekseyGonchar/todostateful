@@ -1,1 +1,1 @@
-__version__ = '0.1.0'  # noqa: WPS410
+__version__ = "0.1.0"

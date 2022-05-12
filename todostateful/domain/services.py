@@ -1,9 +1,12 @@
 from logging import Logger
 from typing import Literal, NewType
 from todostateful.domain.repositories import AuthRepository, TodoRepository
+from todostateful.domain import domain
+from todostateful.libraries.shared import BaseDto
 
-EntityId = NewType('EntityId', str)
-Phone = NewType('Phone', str)
+
+class TodoDto(BaseDto):
+    pass
 
 
 class TodoService:
@@ -11,7 +14,7 @@ class TodoService:
         self._logger = logger
         self._todo_repository = todo_repository
 
-    async def _get_user_todo_if_exists(self, user_id: EntityId):
+    async def _get_user_todo_if_exists(self, user_id: domain.EntityId) -> domain.Todo:
         todo = await self._todo_repository.get(user_id)
 
         if not todo:
@@ -19,7 +22,7 @@ class TodoService:
 
         return todo
 
-    async def create(self, todo_user_to_create):
+    async def create(self, todo_user_to_create) -> TodoDto:
         todo = await self._todo_repository.get_todo_by_email(todo_user_to_create.email)
 
         if todo:

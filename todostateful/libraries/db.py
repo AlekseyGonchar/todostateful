@@ -2,12 +2,13 @@ from datetime import datetime
 from typing import Optional
 from beanie import init_beanie, Document, Link
 import motor.motor_asyncio
-from todostateful.shared import BaseDto
+from todostateful.libraries.shared import BaseDto
 from uuid import UUID, uuid4
 from pydantic import Field
 
 
 class Task(BaseDto):
+    id: UUID = Field(default_factory=uuid4)
     name: str
     description: str | None
     due_time: datetime | None
@@ -16,7 +17,8 @@ class Task(BaseDto):
 
 
 class User(BaseDto):
-    name: str | None
+    id: UUID = Field(default_factory=uuid4)
+    phone: str
     updated_at: Optional[datetime]
 
 
@@ -28,6 +30,7 @@ class Todo(Document):
 
 
 class AuthSession(BaseDto):
+    id: UUID = Field(default_factory=uuid4)
     key: Optional[str]
     expires_at: datetime
     created_at: datetime

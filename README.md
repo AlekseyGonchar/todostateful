@@ -16,4 +16,6 @@
 
 2. `docker-compose up`
 
-Для упрощения локального запуска, `docker-compose` не использует образ создаваемый buildx, для использования buildx нужно выполнить команду `task build:docker`
+Для упрощения локального запуска, `docker-compose` не использует образ создаваемый buildx.
+
+Для использования buildx нужно выполнить команду `task build:docker`, после чего запустить альтернативный `docker-compose` через `task run:compose-override`

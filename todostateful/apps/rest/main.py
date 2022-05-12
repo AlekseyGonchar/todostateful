@@ -39,8 +39,8 @@ async def health() -> Mapping[str, str]:
 if __name__ == "__main__":
     uvicorn.run(
         "__main__:app",
-        host="0.0.0.0",  # noqa: S104
-        port=8000,  # noqa: WPS432
+        host="0.0.0.0",
+        port=8000,
         reload=True,
         forwarded_allow_ips="*",
     )

@@ -1,15 +1,14 @@
-from logging import Logger
 from typing import Any, Callable, Optional
-from sqlalchemy.ext.asyncio import AsyncSession
-from pydantic import BaseModel
+
 import orjson
+from pydantic import BaseModel
 
 
 orjson_options = orjson.OPT_NAIVE_UTC | orjson.OPT_NON_STR_KEYS
 
 
 def orjson_dumps(  # type: ignore[misc]
-    v: Any,  # noqa: WPS111
+    v: Any,
     *,
     default: Optional[Callable[[Any], Any]],
 ) -> str:
@@ -27,13 +26,3 @@ class BaseDto(BaseModel):
         orm_mode = True
         json_loads = orjson.loads
         json_dumps = orjson_dumps
-
-
-class BaseRepository:
-    def __init__(
-        self,
-        db: AsyncSession,
-        logger: Logger,
-    ) -> None:
-        self._db = db
-        self._logger = logger

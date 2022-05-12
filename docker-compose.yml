@@ -6,3 +6,18 @@ services:
     build: '.'
     ports:
       - '8000:8000'
+
+  mongo:
+    image: mongo
+    restart: always
+    volumes:
+      - db_data:/data/db
+
+  mongo-express:
+    image: mongo-express
+    restart: always
+    ports:
+      - 8081:8081
+
+volumes:
+  db_data:

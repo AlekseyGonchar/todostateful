@@ -3,7 +3,7 @@ from typing import List, Optional
 from pydantic import Field
 from sqlalchemy import select
 
-from todostateful.core import BaseRepository, BaseDto
+from todostateful.shared import BaseRepository, BaseDto
 from todostateful.adapters.db import TaskSchema, UserSchema
 
 class TaskBase(BaseDto):

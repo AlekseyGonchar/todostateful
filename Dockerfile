@@ -123,7 +123,7 @@ ENTRYPOINT ["poetry", "run"]
 
 CMD [ \
   "uvicorn", \
-  "todostateful.main:app", \
+  "todostateful.apps.rest.main:app", \
   "--reload", \
   "--host", \
   "0.0.0.0", \

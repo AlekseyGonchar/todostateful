@@ -6,7 +6,7 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from todostateful.core import orjson_options
+from todostateful.shared import orjson_options
 
 
 class ORJSONResponse(JSONResponse):

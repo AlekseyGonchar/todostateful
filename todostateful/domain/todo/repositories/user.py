@@ -4,7 +4,7 @@ from typing import Optional
 from pydantic import Field
 from sqlalchemy import select
 
-from todostateful.core import BaseRepository, BaseDto
+from todostateful.shared import BaseRepository, BaseDto
 from todostateful.adapters.db import UserSchema
 
 

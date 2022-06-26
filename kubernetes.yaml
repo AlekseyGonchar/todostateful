@@ -1,0 +1,144 @@
+# HTTPS no Auth required
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: api
+  labels:
+    app: api
+    type: todostateful
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api
+      type: todostateful
+  template:
+    metadata:
+      labels:
+        app: api
+        type: todostateful
+    spec:
+      containers:
+        - name: api
+          image: todostateful:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: APP_NAME
+              value: todostateful
+            - name: ENVIRONMENT
+              value: dev
+            - name: MONGO_INITDB_ROOT_USERNAME
+              value: root
+            - name: MONGO_INITDB_ROOT_PASSWORD
+              value: example
+            - name: ME_CONFIG_MONGODB_ADMINUSERNAME
+              value: root
+            - name: ME_CONFIG_MONGODB_ADMINPASSWORD
+              value: example
+            - name: ME_CONFIG_MONGODB_URL
+              value: mongodb://root:example@mongodb:27017
+            - name: MONGO_DSN
+              value: mongodb://root:example@mongodb:27017
+          ports:
+            - containerPort: 8000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: todostateful
+spec:
+  ports:
+    - name: http
+      targetPort: 8000
+      port: 80
+  selector:
+    app: api
+    type: todostateful
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: todostateful
+  annotations:
+    cert-manager.io/cluster-issuer: selfsigned-cluster-issuer # https://cert-manager.io/docs/usage/ingress/
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - todostateful.localdev.me
+      secretName: todostateful-local-cert-tls
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: todostateful
+                port:
+                  number: 80
+    - host: todostateful.localdev.me
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: todostateful
+                port:
+                  number: 80
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: selfsigned-issuer
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: selfsigned-cluster-issuer
+spec:
+  selfSigned: {}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongodb
+  labels:
+    app: mongodb
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mongodb
+  template:
+    metadata:
+      labels:
+        app: mongodb
+    spec:
+      containers:
+      - name: mongodb
+        image: mongo
+        ports:
+          - containerPort: 27017
+            name: mongodb
+        env:
+          - name: MONGO_INITDB_ROOT_USERNAME
+            value: root
+          - name: MONGO_INITDB_ROOT_PASSWORD
+            value: example
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongodb
+spec:
+  selector:
+    app: mongodb
+  clusterIP: None
+  ports:
+    - name: mongodb
+      port: 27017
+      targetPort: 27017
